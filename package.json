@@ -1,0 +1,29 @@
+{
+  "name": "rcm-albert",
+  "version": "1.0.0",
+  "description": "Reliability-centered maintenance (Perawatan berbasis keandalan)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon app.js",
+    "start": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fkindarya/rcm-albert.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fkindarya/rcm-albert/issues"
+  },
+  "homepage": "https://github.com/fkindarya/rcm-albert#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
