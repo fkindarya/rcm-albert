@@ -40,6 +40,8 @@ const checkJWT = async (req, res, next) => {
         } else {
             res.sendStatus(401)
         }
+    } else {
+        res.status(401).json({message: "Token Required"})
     }
 }
 
