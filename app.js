@@ -24,5 +24,5 @@ app.use(function (req, res, next) {
 app.use(router)
 
 app.listen(PORT, () => {
-    console.log("Server running on port", PORT)
+    console.log("Server 🚀 on port", PORT)
 })
