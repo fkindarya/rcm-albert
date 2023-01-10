@@ -56,4 +56,17 @@ const checkFlowOwnership = async (req, res, next) => {
     }
 }
 
-module.exports = { validateRegister, checkJWT, checkFlowOwnership }
+const checkVibrationOwnership = async (req, res, next) => {
+    const verified = req.verified
+
+    const vibrationsDb = db.collection('vibrations')
+    const response = await vibrationsDb.doc(req.params.id).get()
+
+    if (response.data().userId == verified.id){
+        next()
+    } else {
+        res.sendStatus(401)
+    }
+}
+
+module.exports = { validateRegister, checkJWT, checkFlowOwnership, checkVibrationOwnership }

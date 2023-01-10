@@ -1,23 +1,29 @@
 const express = require('express')
 const vibrationRouter = express.Router()
+
+const { checkJWT, checkVibrationOwnership } = require('../middlewares/auth.middleware')
 const { db } = require('./firebase')
 
-vibrationRouter.post('/add-data', async(req, res) => {
+vibrationRouter.post('/add-data', checkJWT, async(req, res) => {
     const data = await req.body
+    const verified = await req.verified
     
     const id = '_' + new Date().getTime()
     const json = {
         id: id,
         mtbf: data.mtbf,
-        reliability: data.reliability
+        reliability: data.reliability,
+        userId: verified.id
     }
     
     const vibrationsDb = db.collection('vibrations').doc(id)
-    const response = await vibrationsDb.set(json)
-    res.send(response)
+    await vibrationsDb.set(json)
+    res.status(201).json({
+        message: "Vibration Sensor Created"
+    })
 })
 
-vibrationRouter.post('/:id/add-history', async (req, res) => {
+vibrationRouter.post('/:id/add-history', checkJWT, checkVibrationOwnership, async (req, res) => {
     const data = await req.body
     
     const id = '_' + new Date().getTime()
@@ -27,11 +33,11 @@ vibrationRouter.post('/:id/add-history', async (req, res) => {
     }
 
     const vibrationsDb = db.collection('vibrations').doc(req.params.id).collection('history').doc(id)
-    const response = await vibrationsDb.set(json)
-    res.send(response)
+    await vibrationsDb.set(json)
+    res.status(201).json({message: "Vibration History Created"})
 })
 
-vibrationRouter.post('/:id/:idHistory/add-data', async (req, res) => {
+vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkVibrationOwnership, async (req, res) => {
     const data = await req.body
 
     const id = '_' + new Date().getTime()
@@ -44,12 +50,14 @@ vibrationRouter.post('/:id/:idHistory/add-data', async (req, res) => {
 
     const vibrationsDb = db.collection('vibrations').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data').doc(id)
     const response = await vibrationsDb.set(json)
-    res.send(response)
+    res.status(201).json({message: "Vibration History Data Created"})
 })
 
-vibrationRouter.get('/all', async (req, res) => {
+vibrationRouter.get('/all', checkJWT, async (req, res) => {
+    const verified = req.verified
+
     const vibrationsDb = db.collection('vibrations')
-    const response = await vibrationsDb.get()
+    const response = await vibrationsDb.where('userId', '==', verified.id).get()
 
     let dataArray = []
     response.forEach(doc => {
@@ -59,7 +67,7 @@ vibrationRouter.get('/all', async (req, res) => {
     res.send(dataArray)
 })
 
-vibrationRouter.get('/:id', async (req, res) => {
+vibrationRouter.get('/:id', checkJWT, checkVibrationOwnership, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
     const responsevibration = await vibrationsDb.get()
     
@@ -77,7 +85,7 @@ vibrationRouter.get('/:id', async (req, res) => {
     })
 })
 
-vibrationRouter.get('/:id/:idHistory', async (req, res) => {
+vibrationRouter.get('/:id/:idHistory', checkJWT, checkVibrationOwnership, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
     const responsevibration = await vibrationsDb.get()
 
@@ -99,13 +107,21 @@ vibrationRouter.get('/:id/:idHistory', async (req, res) => {
     })
 })
 
-vibrationRouter.delete('/:id/:idHistory/:idData', async (req, res) => {
+vibrationRouter.delete('/:id/:idHistory', checkJWT, checkVibrationOwnership, async (req, res) => {
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    const vibrationHistoriesDb = vibrationsDb.collection('history').doc(req.params.idHistory)
+
+    await vibrationHistoriesDb.delete()
+    res.status(202).json({message: "Vibration History Deleted"})
+})
+
+vibrationRouter.delete('/:id/:idHistory/:idData', checkJWT, checkVibrationOwnership, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
     const vibrationHistoriesDb = vibrationsDb.collection('history').doc(req.params.idHistory)
     const vibrationHistoryDatasDb = vibrationHistoriesDb.collection('data').doc(req.params.idData)
 
-    const response = await vibrationHistoryDatasDb.delete()
-    res.send(response)
+    await vibrationHistoryDatasDb.delete()
+    res.status(202).json({message: "Vibration History Data Deleted"})
 })
 
 module.exports = vibrationRouter
