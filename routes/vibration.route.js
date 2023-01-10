@@ -12,7 +12,7 @@ vibrationRouter.post('/add-data', checkJWT, async(req, res) => {
     const json = {
         id: id,
         mtbf: data.mtbf,
-        reliability: data.reliability,
+        // reliability: data.reliability,
         userId: verified.id
     }
     
@@ -35,6 +35,21 @@ vibrationRouter.post('/:id/add-history', checkJWT, checkVibrationOwnership, asyn
     const vibrationsDb = db.collection('vibrations').doc(req.params.id).collection('history').doc(id)
     await vibrationsDb.set(json)
     res.status(201).json({message: "Vibration History Created"})
+})
+
+vibrationRouter.post('/:id/add-reliability', checkJWT, checkVibrationOwnership, async (req, res) => {
+    const data = await req.body
+
+    const id = '_' + new Date().getTime()
+    const json = {
+        id: id,
+        value: data.value,
+        createdAt: new Date()
+    }
+
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id).collection('reliability').doc(id)
+    await vibrationsDb.set(json)
+    res.status(201).json({message: "Vibration Reliability Created"})
 })
 
 vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkVibrationOwnership, async (req, res) => {
@@ -79,9 +94,18 @@ vibrationRouter.get('/:id', checkJWT, checkVibrationOwnership, async (req, res) 
         arrayHistory.push(doc.data())
     })
 
+    vibrationReliabilitiesDb = vibrationsDb.collection('reliability')
+    const responseVibrationReliabilities = await vibrationReliabilitiesDb.get()
+
+    let arrayReliability = []
+    responseVibrationReliabilities.forEach(doc => {
+        arrayReliability.push(doc.data())
+    })
+
     res.send({
         vibrations: responsevibration.data(),
-        vibrationHistories: arrayHistory
+        vibrationHistories: arrayHistory,
+        vibrationReliabilities: arrayReliability
     })
 })
 
@@ -107,12 +131,20 @@ vibrationRouter.get('/:id/:idHistory', checkJWT, checkVibrationOwnership, async 
     })
 })
 
-vibrationRouter.delete('/:id/:idHistory', checkJWT, checkVibrationOwnership, async (req, res) => {
+vibrationRouter.delete('/:id/history/:idHistory', checkJWT, checkVibrationOwnership, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
     const vibrationHistoriesDb = vibrationsDb.collection('history').doc(req.params.idHistory)
 
     await vibrationHistoriesDb.delete()
     res.status(202).json({message: "Vibration History Deleted"})
+})
+
+vibrationRouter.delete('/:id/reliability/:idReliability', checkJWT, checkVibrationOwnership, async (req, res) => {
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    const vibrationReliabilitiesDb = vibrationsDb.collection('reliability').doc(req.params.idReliability)
+
+    await vibrationReliabilitiesDb.delete()
+    res.status(202).json({message: "Vibration Reliability Deleted"})
 })
 
 vibrationRouter.delete('/:id/:idHistory/:idData', checkJWT, checkVibrationOwnership, async (req, res) => {

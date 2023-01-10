@@ -12,7 +12,7 @@ flowRouter.post('/add-data', checkJWT, async(req, res) => {
     const json = {
         id: id,
         mtbf: data.mtbf,
-        reliability: data.reliability,
+        // reliability: data.reliability,
         userId: verified.id
     }
     
@@ -37,6 +37,21 @@ flowRouter.post('/:id/add-history', checkJWT, checkFlowOwnership, async (req, re
     res.status(201).json({message: "Flow History Created"})
 })
 
+flowRouter.post('/:id/add-reliability', checkJWT, checkFlowOwnership, async (req, res) => {
+    const data = await req.body
+
+    const id = '_' + new Date().getTime()
+    const json = {
+        id: id,
+        value: data.value,
+        createdAt: new Date()
+    }
+
+    const flowsDb = db.collection('flows').doc(req.params.id).collection('reliability').doc(id)
+    await flowsDb.set(json)
+    res.status(201).json({message: "Flow Reliability Created"})
+})
+
 flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkFlowOwnership, async (req, res) => {
     const data = await req.body
 
@@ -49,7 +64,7 @@ flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkFlowOwnership, async 
     }
 
     const flowsDb = db.collection('flows').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data').doc(id)
-    const response = await flowsDb.set(json)
+    await flowsDb.set(json)
     res.status(201).json({message: "Flow History Data Created"})
 })
 
@@ -79,9 +94,18 @@ flowRouter.get('/:id', checkJWT, checkFlowOwnership, async (req, res) => {
         arrayHistory.push(doc.data())
     })
 
+    flowReliabilitiesDb = flowsDb.collection('reliability')
+    const responseFlowReliabilities = await flowReliabilitiesDb.get()
+
+    let arrayReliability = []
+    responseFlowReliabilities.forEach(doc => {
+        arrayReliability.push(doc.data())
+    })
+
     res.send({
         flows: responseFlow.data(),
-        flowHistories: arrayHistory
+        flowHistories: arrayHistory,
+        flowReliabilities: arrayReliability
     })
 
     // res.send(responseFlow.data())
@@ -118,12 +142,20 @@ flowRouter.get('/:id/:idHistory', checkJWT, checkFlowOwnership, async (req, res)
     })
 })
 
-flowRouter.delete('/:id/:idHistory', checkJWT, checkFlowOwnership, async (req, res) => {
+flowRouter.delete('/:id/history/:idHistory', checkJWT, checkFlowOwnership, async (req, res) => {
     const flowsDb = db.collection('flows').doc(req.params.id)
     const flowHistoriesDb = flowsDb.collection('history').doc(req.params.idHistory)
 
     await flowHistoriesDb.delete()
     res.status(202).json({message: "Flow History Deleted"})
+})
+
+flowRouter.delete('/:id/reliability/:idReliability', checkJWT, checkFlowOwnership, async (req, res) => {
+    const flowsDb = db.collection('flows').doc(req.params.id)
+    const flowReliabilitiesDb = flowsDb.collection('reliability').doc(req.params.idReliability)
+
+    await flowReliabilitiesDb.delete()
+    res.status(202).json({message: "Flow Reliability Deleted"})
 })
 
 flowRouter.delete('/:id/:idHistory/:idData', checkJWT, checkFlowOwnership, async (req, res) => {
