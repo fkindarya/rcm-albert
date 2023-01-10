@@ -1,4 +1,7 @@
 const { body, validationResult } = require('express-validator')
+require('dotenv').config()
+const jwt = require('jsonwebtoken')
+const { db } = require('../routes/firebase')
 
 const validateRegister = [
     body('email')
@@ -26,7 +29,31 @@ const validateRegister = [
 ]
 
 const checkJWT = async (req, res, next) => {
+    const auth = await req.headers.authorization
+    if (auth){
+        const token = await auth.split(' ')[1]
+        const verified =jwt.verify(token, process.env.JWTKEY)
 
+        if (verified){
+            req.verified = verified
+            next()
+        } else {
+            res.sendStatus(401)
+        }
+    }
 }
 
-module.exports = { validateRegister }
+const checkFlowOwnership = async (req, res, next) => {
+    const verified = req.verified
+
+    const flowsDb = db.collection('flows')
+    const response = await flowsDb.doc(req.params.id).get()
+
+    if (response.data().userId == verified.id){
+        next()
+    } else {
+        res.sendStatus(401)
+    }
+}
+
+module.exports = { validateRegister, checkJWT, checkFlowOwnership }

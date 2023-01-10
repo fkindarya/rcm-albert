@@ -1,23 +1,29 @@
 const express = require('express')
 const flowRouter = express.Router()
+
+const { checkJWT, checkFlowOwnership } = require('../middlewares/auth.middleware')
 const { db } = require('./firebase')
 
-flowRouter.post('/add-data', async(req, res) => {
+flowRouter.post('/add-data', checkJWT, async(req, res) => {
     const data = await req.body
+    const verified = await req.verified
     
     const id = '_' + new Date().getTime()
     const json = {
         id: id,
         mtbf: data.mtbf,
-        reliability: data.reliability
+        reliability: data.reliability,
+        userId: verified.id
     }
     
     const flowsDb = db.collection('flows').doc(id)
-    const response = await flowsDb.set(json)
-    res.send(response)
+    await flowsDb.set(json)
+    res.status(201).json({
+        message: "Flow Sensor Created"
+    })
 })
 
-flowRouter.post('/:id/add-history', async (req, res) => {
+flowRouter.post('/:id/add-history', checkJWT, checkFlowOwnership, async (req, res) => {
     const data = await req.body
     
     const id = '_' + new Date().getTime()
@@ -27,11 +33,11 @@ flowRouter.post('/:id/add-history', async (req, res) => {
     }
 
     const flowsDb = db.collection('flows').doc(req.params.id).collection('history').doc(id)
-    const response = await flowsDb.set(json)
-    res.send(response)
+    await flowsDb.set(json)
+    res.status(201).json({message: "Flow History Created"})
 })
 
-flowRouter.post('/:id/:idHistory/add-data', async (req, res) => {
+flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkFlowOwnership, async (req, res) => {
     const data = await req.body
 
     const id = '_' + new Date().getTime()
@@ -44,12 +50,14 @@ flowRouter.post('/:id/:idHistory/add-data', async (req, res) => {
 
     const flowsDb = db.collection('flows').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data').doc(id)
     const response = await flowsDb.set(json)
-    res.send(response)
+    res.status(201).json({message: "Flow History Data Created"})
 })
 
-flowRouter.get('/all', async (req, res) => {
+flowRouter.get('/all', checkJWT, async (req, res) => {
+    const verified = req.verified
+
     const flowsDb = db.collection('flows')
-    const response = await flowsDb.get()
+    const response = await flowsDb.where('userId', '==', verified.id).get()
 
     let dataArray = []
     response.forEach(doc => {
@@ -59,7 +67,7 @@ flowRouter.get('/all', async (req, res) => {
     res.send(dataArray)
 })
 
-flowRouter.get('/:id', async (req, res) => {
+flowRouter.get('/:id', checkJWT, checkFlowOwnership, async (req, res) => {
     const flowsDb = db.collection('flows').doc(req.params.id)
     const responseFlow = await flowsDb.get()
     
@@ -88,7 +96,7 @@ flowRouter.get('/:id', async (req, res) => {
     // res.send(hayuk)
 })
 
-flowRouter.get('/:id/:idHistory', async (req, res) => {
+flowRouter.get('/:id/:idHistory', checkJWT, checkFlowOwnership, async (req, res) => {
     const flowsDb = db.collection('flows').doc(req.params.id)
     const responseFlow = await flowsDb.get()
 
@@ -110,14 +118,23 @@ flowRouter.get('/:id/:idHistory', async (req, res) => {
     })
 })
 
-flowRouter.delete('/:id/:idHistory/:idData', async (req, res) => {
+flowRouter.delete('/:id/:idHistory', checkJWT, checkFlowOwnership, async (req, res) => {
+    const flowsDb = db.collection('flows').doc(req.params.id)
+    const flowHistoriesDb = flowsDb.collection('history').doc(req.params.idHistory)
+
+    await flowHistoriesDb.delete()
+    res.status(202).json({message: "Flow History Deleted"})
+})
+
+flowRouter.delete('/:id/:idHistory/:idData', checkJWT, checkFlowOwnership, async (req, res) => {
     const flowsDb = db.collection('flows').doc(req.params.id)
     const flowHistoriesDb = flowsDb.collection('history').doc(req.params.idHistory)
     const flowHistoryDatasDb = flowHistoriesDb.collection('data').doc(req.params.idData)
 
-    const response = await flowHistoryDatasDb.delete()
-    res.send(response)
+    await flowHistoryDatasDb.delete()
+    res.status(202).json({message: "Flow History Data Deleted"})
 })
+
 
 // flowRouter.post('/data/:id/history', async (req, res) => {
 //     const data = await req.body

@@ -1,6 +1,6 @@
 const express = require('express')
 const authRouter = express.Router()
-require('dotenv').config
+require('dotenv').config()
 
 const { validateRegister } = require('../middlewares/auth.middleware')
 const { db } = require('./firebase')
@@ -19,13 +19,12 @@ authRouter.post('/register', validateRegister, async (req, res) => {
         email: data.email,
         password: data.password,
         fullName: data.fullName,
-        loginToken: "",
         deviceToken: ""
     }
 
     const usersDb = db.collection('users').doc(id)
     await usersDb.set(json)
-    res.send({
+    res.status(201).json({
         message: "Register Success"
     })
 })
@@ -52,10 +51,10 @@ authRouter.post('/login', async (req, res) => {
                 id: arrayUser[0].id,
                 email: arrayUser[0].email,
                 fullName: arrayUser[0].fullName
-            }, process.env.JWTKEY)
+            }, process.env.JWTKEY, {expiresIn: '1d'})
 
             await usersDb.doc(arrayUser[0].id).update({
-                loginToken: loginToken
+                deviceToken: data.deviceToken
             })
 
             res.send({
