@@ -18,8 +18,7 @@ authRouter.post('/register', validateRegister, async (req, res) => {
         id: id,
         email: data.email,
         password: data.password,
-        fullName: data.fullName,
-        deviceToken: ""
+        fullName: data.fullName
     }
 
     const usersDb = db.collection('users').doc(id)
@@ -52,10 +51,6 @@ authRouter.post('/login', async (req, res) => {
                 email: arrayUser[0].email,
                 fullName: arrayUser[0].fullName
             }, process.env.JWTKEY, {expiresIn: '1d'})
-
-            await usersDb.doc(arrayUser[0].id).update({
-                deviceToken: data.deviceToken
-            })
 
             res.send({
                 message: "Login Success",
