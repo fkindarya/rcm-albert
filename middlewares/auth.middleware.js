@@ -15,6 +15,9 @@ const validateRegister = [
     body('fullName')
         .notEmpty()
         .withMessage('Full Name Must Be Filled'),
+    body('role')
+        .notEmpty()
+        .withMessage('User Role Must Be Chosen'),
     (req, res, next) => {
         const error = validationResult(req).formatWith(({ msg }) => msg)
 
