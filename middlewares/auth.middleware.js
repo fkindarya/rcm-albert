@@ -74,4 +74,14 @@ const checkVibrationOwnership = async (req, res, next) => {
     }
 }
 
-module.exports = { validateRegister, checkJWT, checkFlowOwnership, checkVibrationOwnership }
+const checkAdminRole = async (req, res, next) => {
+    const verified = req.verified
+
+    if (verified.role == "admin"){
+        next()
+    } else {
+        res.sendStatus(401)
+    }
+}
+
+module.exports = { validateRegister, checkJWT, checkFlowOwnership, checkVibrationOwnership, checkAdminRole }
