@@ -1,29 +1,30 @@
 const express = require('express')
 const vibrationRouter = express.Router()
 
-const { checkJWT, checkVibrationOwnership } = require('../middlewares/auth.middleware')
+const { checkJWT, checkAdminRole } = require('../middlewares/auth.middleware')
 const { db } = require('./firebase')
 
-vibrationRouter.post('/add-data', checkJWT, async(req, res) => {
-    const data = await req.body
-    const verified = await req.verified
+vibrationRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
+    // const data = await req.body
+    // const verified = await req.verified
     
     const id = '_' + new Date().getTime()
     const json = {
         id: id,
-        mtbf: data.mtbf,
+        // mtbf: data.mtbf,
         // reliability: data.reliability,
-        userId: verified.id
+        // userId: verified.id
     }
     
     const vibrationsDb = db.collection('vibrations').doc(id)
     await vibrationsDb.set(json)
     res.status(201).json({
-        message: "Vibration Sensor Created"
+        message: "Vibration Sensor Created",
+        data: id
     })
 })
 
-vibrationRouter.post('/:id/add-history', checkJWT, checkVibrationOwnership, async (req, res) => {
+vibrationRouter.post('/:id/add-history', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
     
     const id = '_' + new Date().getTime()
@@ -37,13 +38,13 @@ vibrationRouter.post('/:id/add-history', checkJWT, checkVibrationOwnership, asyn
     res.status(201).json({message: "Vibration History Created"})
 })
 
-vibrationRouter.post('/:id/add-reliability', checkJWT, checkVibrationOwnership, async (req, res) => {
+vibrationRouter.post('/:id/add-reliability', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
 
     const id = '_' + new Date().getTime()
     const json = {
         id: id,
-        value: data.value,
+        reliability: data.value,
         createdAt: new Date()
     }
 
@@ -52,7 +53,22 @@ vibrationRouter.post('/:id/add-reliability', checkJWT, checkVibrationOwnership, 
     res.status(201).json({message: "Vibration Reliability Created"})
 })
 
-vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkVibrationOwnership, async (req, res) => {
+vibrationRouter.post('/:id/add-mtbf', checkJWT, checkAdminRole, async (req, res) => {
+    const data = await req.body
+
+    const id = '_' + new Date().getTime()
+    const json = {
+        id: id,
+        mtbf: data.value,
+        createdAt: new Date()
+    }
+
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id).collection('mtbf').doc(id)
+    await vibrationsDb.set(json)
+    res.status(201).json({message: "Vibration MTBF Created"})
+})
+
+vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
 
     const id = '_' + new Date().getTime()
@@ -69,10 +85,11 @@ vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkVibrationOwnersh
 })
 
 vibrationRouter.get('/all', checkJWT, async (req, res) => {
-    const verified = req.verified
+    // const verified = req.verified
 
     const vibrationsDb = db.collection('vibrations')
-    const response = await vibrationsDb.where('userId', '==', verified.id).get()
+    const response = await vibrationsDb.get()
+    // const response = await vibrationsDb.where('userId', '==', verified.id).get()
 
     let dataArray = []
     response.forEach(doc => {
@@ -82,16 +99,30 @@ vibrationRouter.get('/all', checkJWT, async (req, res) => {
     res.send(dataArray)
 })
 
-vibrationRouter.get('/:id', checkJWT, checkVibrationOwnership, async (req, res) => {
+vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
-    const responsevibration = await vibrationsDb.get()
+    const responseVibration = await vibrationsDb.get()
+
+    let vibrations = {
+        id: responseVibration.data().id
+    }
     
     const vibrationHistoriesDb = vibrationsDb.collection('history')
-    const responsevibrationHistories = await vibrationHistoriesDb.get()
+    const responseVibrationHistories = await vibrationHistoriesDb.get()
 
     let arrayHistory = []
-    responsevibrationHistories.forEach(doc => {
+    let arrayHistoryData = []
+    responseVibrationHistories.forEach( async doc => {
         arrayHistory.push(doc.data())
+        let lengthArrayHistory = arrayHistory.length
+        
+        let vibrationHistoryDataDb = vibrationHistoriesDb.doc(doc.data().id).collection('data')
+        let responseVibrationHistoryDatas = await vibrationHistoryDataDb.get()
+
+        responseVibrationHistoryDatas.forEach(doc => {
+            arrayHistoryData.push(doc.data())
+            arrayHistory[lengthArrayHistory-1]['data'] = arrayHistoryData
+        })
     })
 
     vibrationReliabilitiesDb = vibrationsDb.collection('reliability')
@@ -101,37 +132,47 @@ vibrationRouter.get('/:id', checkJWT, checkVibrationOwnership, async (req, res) 
     responseVibrationReliabilities.forEach(doc => {
         arrayReliability.push(doc.data())
     })
+    
+    const vibrationMtbfDb = vibrationsDb.collection('mtbf')
+    const responseVibrationMtbf = await vibrationMtbfDb.get()
+
+    let arrayMtbf = []
+    responseVibrationMtbf.forEach(doc => {
+        arrayMtbf.push(doc.data())
+    })
+
+    vibrations['history'] = arrayHistory
+    vibrations['reliability'] = arrayReliability
+    vibrations['mtbf'] = arrayMtbf
 
     res.send({
-        vibrations: responsevibration.data(),
-        vibrationHistories: arrayHistory,
-        vibrationReliabilities: arrayReliability
+        vibrations
     })
 })
 
-vibrationRouter.get('/:id/:idHistory', checkJWT, checkVibrationOwnership, async (req, res) => {
-    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
-    const responsevibration = await vibrationsDb.get()
+// vibrationRouter.get('/:id/:idHistory', checkJWT, async (req, res) => {
+//     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+//     const responsevibration = await vibrationsDb.get()
 
-    const vibrationHistoriesDb = vibrationsDb.collection('history').doc(req.params.idHistory)
-    const responsevibrationHistory = await vibrationHistoriesDb.get()
+//     const vibrationHistoriesDb = vibrationsDb.collection('history').doc(req.params.idHistory)
+//     const responsevibrationHistory = await vibrationHistoriesDb.get()
 
-    const vibrationHistoryDatasDb = vibrationHistoriesDb.collection('data')
-    const responsevibrationHistoryData = await vibrationHistoryDatasDb.get()
+//     const vibrationHistoryDatasDb = vibrationHistoriesDb.collection('data')
+//     const responsevibrationHistoryData = await vibrationHistoryDatasDb.get()
 
-    let arrayHistoryData = []
-    responsevibrationHistoryData.forEach(doc => {
-        arrayHistoryData.push(doc.data())
-    })
+//     let arrayHistoryData = []
+//     responsevibrationHistoryData.forEach(doc => {
+//         arrayHistoryData.push(doc.data())
+//     })
 
-    res.send({
-        vibrations: responsevibration.data(),
-        vibrationHistories: responsevibrationHistory.data(),
-        vibrationHistoryData: arrayHistoryData
-    })
-})
+//     res.send({
+//         vibrations: responsevibration.data(),
+//         vibrationHistories: responsevibrationHistory.data(),
+//         vibrationHistoryData: arrayHistoryData
+//     })
+// })
 
-vibrationRouter.delete('/:id/history/:idHistory', checkJWT, checkVibrationOwnership, async (req, res) => {
+vibrationRouter.delete('/:id/history/:idHistory', checkJWT, checkAdminRole, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
     const vibrationHistoriesDb = vibrationsDb.collection('history').doc(req.params.idHistory)
 
@@ -139,7 +180,7 @@ vibrationRouter.delete('/:id/history/:idHistory', checkJWT, checkVibrationOwners
     res.status(202).json({message: "Vibration History Deleted"})
 })
 
-vibrationRouter.delete('/:id/reliability/:idReliability', checkJWT, checkVibrationOwnership, async (req, res) => {
+vibrationRouter.delete('/:id/reliability/:idReliability', checkJWT, checkAdminRole, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
     const vibrationReliabilitiesDb = vibrationsDb.collection('reliability').doc(req.params.idReliability)
 
@@ -147,7 +188,15 @@ vibrationRouter.delete('/:id/reliability/:idReliability', checkJWT, checkVibrati
     res.status(202).json({message: "Vibration Reliability Deleted"})
 })
 
-vibrationRouter.delete('/:id/:idHistory/:idData', checkJWT, checkVibrationOwnership, async (req, res) => {
+vibrationRouter.delete('/:id/mtbf/:idMtbf', checkJWT, checkAdminRole, async (req, res) => {
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    const vibrationReliabilitiesDb = vibrationsDb.collection('mtbf').doc(req.params.idMtbf)
+
+    await vibrationReliabilitiesDb.delete()
+    res.status(202).json({message: "Vibration MTBF Deleted"})
+})
+
+vibrationRouter.delete('/:id/:idHistory/:idData', checkJWT, checkAdminRole, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
     const vibrationHistoriesDb = vibrationsDb.collection('history').doc(req.params.idHistory)
     const vibrationHistoryDatasDb = vibrationHistoriesDb.collection('data').doc(req.params.idData)

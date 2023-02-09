@@ -1,29 +1,30 @@
 const express = require('express')
 const flowRouter = express.Router()
 
-const { checkJWT, checkFlowOwnership } = require('../middlewares/auth.middleware')
+const { checkJWT, checkAdminRole } = require('../middlewares/auth.middleware')
 const { db } = require('./firebase')
 
-flowRouter.post('/add-data', checkJWT, async(req, res) => {
-    const data = await req.body
-    const verified = await req.verified
+flowRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
+    // const data = await req.body
+    // const verified = await req.verified
     
     const id = '_' + new Date().getTime()
     const json = {
         id: id,
-        mtbf: data.mtbf,
+        // mtbf: data.mtbf,
         // reliability: data.reliability,
-        userId: verified.id
+        // userId: verified.id
     }
     
     const flowsDb = db.collection('flows').doc(id)
     await flowsDb.set(json)
     res.status(201).json({
-        message: "Flow Sensor Created"
+        message: "Flow Sensor Created",
+        data: id
     })
 })
 
-flowRouter.post('/:id/add-history', checkJWT, checkFlowOwnership, async (req, res) => {
+flowRouter.post('/:id/add-history', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
     
     const id = '_' + new Date().getTime()
@@ -37,13 +38,13 @@ flowRouter.post('/:id/add-history', checkJWT, checkFlowOwnership, async (req, re
     res.status(201).json({message: "Flow History Created"})
 })
 
-flowRouter.post('/:id/add-reliability', checkJWT, checkFlowOwnership, async (req, res) => {
+flowRouter.post('/:id/add-reliability', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
 
     const id = '_' + new Date().getTime()
     const json = {
         id: id,
-        value: data.value,
+        reliability: data.value,
         createdAt: new Date()
     }
 
@@ -52,7 +53,22 @@ flowRouter.post('/:id/add-reliability', checkJWT, checkFlowOwnership, async (req
     res.status(201).json({message: "Flow Reliability Created"})
 })
 
-flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkFlowOwnership, async (req, res) => {
+flowRouter.post('/:id/add-mtbf', checkJWT, checkAdminRole, async (req, res) => {
+    const data = await req.body
+
+    const id = '_' + new Date().getTime()
+    const json = {
+        id: id,
+        mtbf: data.value,
+        createdAt: new Date()
+    }
+
+    const flowsDb = db.collection('flows').doc(req.params.id).collection('mtbf').doc(id)
+    await flowsDb.set(json)
+    res.status(201).json({message: "Flow MTBF Created"})
+})
+
+flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
 
     const id = '_' + new Date().getTime()
@@ -69,10 +85,11 @@ flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkFlowOwnership, async 
 })
 
 flowRouter.get('/all', checkJWT, async (req, res) => {
-    const verified = req.verified
+    // const verified = req.verified
 
     const flowsDb = db.collection('flows')
-    const response = await flowsDb.where('userId', '==', verified.id).get()
+    const response = await flowsDb.get()
+    // const response = await flowsDb.where('userId', '==', verified.id).get()
 
     let dataArray = []
     response.forEach(doc => {
@@ -82,16 +99,30 @@ flowRouter.get('/all', checkJWT, async (req, res) => {
     res.send(dataArray)
 })
 
-flowRouter.get('/:id', checkJWT, checkFlowOwnership, async (req, res) => {
+flowRouter.get('/:id', checkJWT, async (req, res) => {
     const flowsDb = db.collection('flows').doc(req.params.id)
     const responseFlow = await flowsDb.get()
+
+    let flows = {
+        id: responseFlow.data().id
+    }
     
     const flowHistoriesDb = flowsDb.collection('history')
     const responseFlowHistories = await flowHistoriesDb.get()
 
     let arrayHistory = []
-    responseFlowHistories.forEach(doc => {
+    let arrayHistoryData = []
+    responseFlowHistories.forEach( async doc => {
         arrayHistory.push(doc.data())
+        let lengthArrayHistory = arrayHistory.length
+        
+        let flowHistoryDataDb = flowHistoriesDb.doc(doc.data().id).collection('data')
+        let responseFlowHistoryDatas = await flowHistoryDataDb.get()
+
+        responseFlowHistoryDatas.forEach(doc => {
+            arrayHistoryData.push(doc.data())
+            arrayHistory[lengthArrayHistory-1]['data'] = arrayHistoryData
+        })
     })
 
     flowReliabilitiesDb = flowsDb.collection('reliability')
@@ -101,11 +132,21 @@ flowRouter.get('/:id', checkJWT, checkFlowOwnership, async (req, res) => {
     responseFlowReliabilities.forEach(doc => {
         arrayReliability.push(doc.data())
     })
+    
+    flowMtbfDb = flowsDb.collection('mtbf')
+    const responseFlowMtbf = await flowMtbfDb.get()
+
+    let arrayMtbf = []
+    responseFlowMtbf.forEach(doc => {
+        arrayMtbf.push(doc.data())
+    })
+
+    flows['history'] = arrayHistory
+    flows['reliability'] = arrayReliability
+    flows['mtbf'] = arrayMtbf
 
     res.send({
-        flows: responseFlow.data(),
-        flowHistories: arrayHistory,
-        flowReliabilities: arrayReliability
+        flows
     })
 
     // res.send(responseFlow.data())
@@ -120,29 +161,29 @@ flowRouter.get('/:id', checkJWT, checkFlowOwnership, async (req, res) => {
     // res.send(hayuk)
 })
 
-flowRouter.get('/:id/:idHistory', checkJWT, checkFlowOwnership, async (req, res) => {
-    const flowsDb = db.collection('flows').doc(req.params.id)
-    const responseFlow = await flowsDb.get()
+// flowRouter.get('/:id/:idHistory', checkJWT, async (req, res) => {
+//     const flowsDb = db.collection('flows').doc(req.params.id)
+//     const responseFlow = await flowsDb.get()
 
-    const flowHistoriesDb = flowsDb.collection('history').doc(req.params.idHistory)
-    const responseFlowHistory = await flowHistoriesDb.get()
+//     const flowHistoriesDb = flowsDb.collection('history').doc(req.params.idHistory)
+//     const responseFlowHistory = await flowHistoriesDb.get()
 
-    const flowHistoryDatasDb = flowHistoriesDb.collection('data')
-    const responseFlowHistoryData = await flowHistoryDatasDb.get()
+//     const flowHistoryDatasDb = flowHistoriesDb.collection('data')
+//     const responseFlowHistoryData = await flowHistoryDatasDb.get()
 
-    let arrayHistoryData = []
-    responseFlowHistoryData.forEach(doc => {
-        arrayHistoryData.push(doc.data())
-    })
+//     let arrayHistoryData = []
+//     responseFlowHistoryData.forEach(doc => {
+//         arrayHistoryData.push(doc.data())
+//     })
 
-    res.send({
-        flows: responseFlow.data(),
-        flowHistories: responseFlowHistory.data(),
-        flowHistoryData: arrayHistoryData
-    })
-})
+//     res.send({
+//         flows: responseFlow.data(),
+//         flowHistories: responseFlowHistory.data(),
+//         flowHistoryData: arrayHistoryData
+//     })
+// })
 
-flowRouter.delete('/:id/history/:idHistory', checkJWT, checkFlowOwnership, async (req, res) => {
+flowRouter.delete('/:id/history/:idHistory', checkJWT, checkAdminRole, async (req, res) => {
     const flowsDb = db.collection('flows').doc(req.params.id)
     const flowHistoriesDb = flowsDb.collection('history').doc(req.params.idHistory)
 
@@ -150,7 +191,7 @@ flowRouter.delete('/:id/history/:idHistory', checkJWT, checkFlowOwnership, async
     res.status(202).json({message: "Flow History Deleted"})
 })
 
-flowRouter.delete('/:id/reliability/:idReliability', checkJWT, checkFlowOwnership, async (req, res) => {
+flowRouter.delete('/:id/reliability/:idReliability', checkJWT, checkAdminRole, async (req, res) => {
     const flowsDb = db.collection('flows').doc(req.params.id)
     const flowReliabilitiesDb = flowsDb.collection('reliability').doc(req.params.idReliability)
 
@@ -158,7 +199,15 @@ flowRouter.delete('/:id/reliability/:idReliability', checkJWT, checkFlowOwnershi
     res.status(202).json({message: "Flow Reliability Deleted"})
 })
 
-flowRouter.delete('/:id/:idHistory/:idData', checkJWT, checkFlowOwnership, async (req, res) => {
+flowRouter.delete('/:id/mtbf/:idMtbf', checkJWT, checkAdminRole, async (req, res) => {
+    const flowsDb = db.collection('flows').doc(req.params.id)
+    const flowMtbfDb = flowsDb.collection('mtbf').doc(req.params.idMtbf)
+
+    await flowMtbfDb.delete()
+    res.status(202).json({message: "Flow MTBF Deleted"})
+})
+
+flowRouter.delete('/:id/:idHistory/:idData', checkJWT, checkAdminRole, async (req, res) => {
     const flowsDb = db.collection('flows').doc(req.params.id)
     const flowHistoriesDb = flowsDb.collection('history').doc(req.params.idHistory)
     const flowHistoryDatasDb = flowHistoriesDb.collection('data').doc(req.params.idData)

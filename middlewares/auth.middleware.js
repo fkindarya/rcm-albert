@@ -48,31 +48,31 @@ const checkJWT = async (req, res, next) => {
     }
 }
 
-const checkFlowOwnership = async (req, res, next) => {
-    const verified = req.verified
+// const checkFlowOwnership = async (req, res, next) => {
+//     const verified = req.verified
 
-    const flowsDb = db.collection('flows')
-    const response = await flowsDb.doc(req.params.id).get()
+//     const flowsDb = db.collection('flows')
+//     const response = await flowsDb.doc(req.params.id).get()
 
-    if (response.data().userId == verified.id){
-        next()
-    } else {
-        res.sendStatus(401)
-    }
-}
+//     if (response.data().userId == verified.id){
+//         next()
+//     } else {
+//         res.sendStatus(401)
+//     }
+// }
 
-const checkVibrationOwnership = async (req, res, next) => {
-    const verified = req.verified
+// const checkVibrationOwnership = async (req, res, next) => {
+//     const verified = req.verified
 
-    const vibrationsDb = db.collection('vibrations')
-    const response = await vibrationsDb.doc(req.params.id).get()
+//     const vibrationsDb = db.collection('vibrations')
+//     const response = await vibrationsDb.doc(req.params.id).get()
 
-    if (response.data().userId == verified.id){
-        next()
-    } else {
-        res.sendStatus(401)
-    }
-}
+//     if (response.data().userId == verified.id){
+//         next()
+//     } else {
+//         res.sendStatus(401)
+//     }
+// }
 
 const checkAdminRole = async (req, res, next) => {
     const verified = req.verified
@@ -84,4 +84,4 @@ const checkAdminRole = async (req, res, next) => {
     }
 }
 
-module.exports = { validateRegister, checkJWT, checkFlowOwnership, checkVibrationOwnership, checkAdminRole }
+module.exports = { validateRegister, checkJWT, checkAdminRole }
