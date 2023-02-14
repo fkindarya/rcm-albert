@@ -76,7 +76,8 @@ flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req
         id: id,
         duration: data.duration,
         time: data.time,
-        status: data.status
+        status: data.status,
+        historyId: req.params.idHistory
     }
 
     const flowsDb = db.collection('flows').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data').doc(id)
@@ -100,7 +101,8 @@ flowRouter.get('/all', checkJWT, async (req, res) => {
 })
 
 flowRouter.get('/:id', checkJWT, async (req, res) => {
-    const flowsDb = db.collection('flows').doc(req.params.id)
+    const id = req.params.id
+    const flowsDb = db.collection('flows').doc(id)
     const responseFlow = await flowsDb.get()
 
     let flows = {
@@ -111,8 +113,25 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
     const responseFlowHistories = await flowHistoriesDb.get()
 
     let arrayHistory = []
-    responseFlowHistories.forEach( async doc => {
+    responseFlowHistories.forEach(doc => {
         arrayHistory.push(doc.data())
+    })
+
+    flows['history'] = arrayHistory
+    
+    arrayHistory.forEach( async (doc, index) => {
+        let arrayHistoryData = []
+        let arrayHistoryDataTemp = []
+        let getHistoryDatas = await db.collection('flows').doc(id).collection('history').doc(doc.id).collection('data').get()
+
+        getHistoryDatas.forEach(doc => {
+            if (arrayHistory[index].id == doc.data().historyId)
+                arrayHistoryData.push(doc.data())
+            else
+                arrayHistoryDataTemp.push(doc.data)
+        })
+
+        flows['history'][index].data = arrayHistoryData
     })
 
     flowReliabilitiesDb = flowsDb.collection('reliability')
@@ -131,7 +150,6 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
         arrayMtbf.push(doc.data())
     })
 
-    flows['history'] = arrayHistory
     flows['reliability'] = arrayReliability
     flows['mtbf'] = arrayMtbf
 

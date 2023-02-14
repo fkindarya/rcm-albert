@@ -76,7 +76,8 @@ vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async
         id: id,
         duration: data.duration,
         time: data.time,
-        status: data.status
+        status: data.status,
+        historyId: req.params.idHistory
     }
 
     const vibrationsDb = db.collection('vibrations').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data').doc(id)
@@ -100,7 +101,8 @@ vibrationRouter.get('/all', checkJWT, async (req, res) => {
 })
 
 vibrationRouter.get('/:id', checkJWT, async (req, res) => {
-    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    const id = req.params.id
+    const vibrationsDb = db.collection('vibrations').doc(id)
     const responseVibration = await vibrationsDb.get()
 
     let vibrations = {
@@ -111,8 +113,26 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     const responseVibrationHistories = await vibrationHistoriesDb.get()
 
     let arrayHistory = []
-    responseVibrationHistories.forEach( async doc => {
+    responseVibrationHistories.forEach(doc => {
         arrayHistory.push(doc.data())
+    })
+
+    vibrations['history'] = arrayHistory
+
+    arrayHistory.forEach( async (doc, index) => {
+        let arrayHistoryData = []
+        let arrayHistoryDataTemp = []
+        let getHistoryDatas = await db.collection('vibrations').doc(id).collection('history').doc(doc.id).collection('data').get()
+
+        getHistoryDatas.forEach(doc => {
+            console.log(doc.data())
+            if (arrayHistory[index].id == doc.data().historyId)
+                arrayHistoryData.push(doc.data())
+            else
+                arrayHistoryDataTemp.push(doc.data)
+        })
+
+        vibrations['history'][index].data = arrayHistoryData
     })
 
     vibrationReliabilitiesDb = vibrationsDb.collection('reliability')
@@ -131,7 +151,6 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
         arrayMtbf.push(doc.data())
     })
 
-    vibrations['history'] = arrayHistory
     vibrations['reliability'] = arrayReliability
     vibrations['mtbf'] = arrayMtbf
 
