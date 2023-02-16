@@ -34,17 +34,25 @@ const validateRegister = [
 const checkJWT = async (req, res, next) => {
     const auth = await req.headers.authorization
     if (auth){
-        const token = await auth.split(' ')[1]
-        const verified =jwt.verify(token, process.env.JWTKEY)
 
-        if (verified){
-            req.verified = verified
-            next()
-        } else {
-            res.sendStatus(401)
+        try {
+            const token = await auth.split(' ')[1]
+            const verified = jwt.verify(token, process.env.JWTKEY)
+
+            if (verified){
+                req.verified = verified
+                next()
+            } else {
+                res.sendStatus(401)
+            }
+        } catch (error) {
+            if (error.name == "TokenExpiredError"){
+                res.status(401).json({message: "Token Expired"})
+            }
         }
+        
     } else {
-        res.status(401).json({message: "Token Required"})
+        res.status(403).json({message: "Token Required"})
     }
 }
 
