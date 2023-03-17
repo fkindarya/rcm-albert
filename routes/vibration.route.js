@@ -120,19 +120,29 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     vibrations['history'] = arrayHistory
 
     arrayHistory.forEach( async (doc, index) => {
+        let tempSumMtbf = 0
+        let mtbf = 0
+        let reliability = 0
         let arrayHistoryData = []
         let arrayHistoryDataTemp = []
         let getHistoryDatas = await db.collection('vibrations').doc(id).collection('history').doc(doc.id).collection('data').get()
 
         getHistoryDatas.forEach(doc => {
             console.log(doc.data())
-            if (arrayHistory[index].id == doc.data().historyId)
+            if (arrayHistory[index].id == doc.data().historyId){
                 arrayHistoryData.push(doc.data())
-            else
+                tempSumMtbf += doc.data().duration
+            }
+            else{
                 arrayHistoryDataTemp.push(doc.data)
+            }
         })
 
+        mtbf = tempSumMtbf / arrayHistoryData.length
+        reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
         vibrations['history'][index].data = arrayHistoryData
+        vibrations['history'][index].mtbf = mtbf
+        vibrations['history'][index].reliability = reliability
     })
 
     vibrationReliabilitiesDb = vibrationsDb.collection('reliability')
@@ -150,9 +160,6 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     responseVibrationMtbf.forEach(doc => {
         arrayMtbf.push(doc.data())
     })
-
-    vibrations['reliability'] = arrayReliability
-    vibrations['mtbf'] = arrayMtbf
 
     res.send({
         vibrations

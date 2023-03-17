@@ -120,18 +120,28 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
     flows['history'] = arrayHistory
     
     arrayHistory.forEach( async (doc, index) => {
+        let tempSumMtbf = 0
+        let mtbf = 0
+        let reliability = 0
         let arrayHistoryData = []
         let arrayHistoryDataTemp = []
         let getHistoryDatas = await db.collection('flows').doc(id).collection('history').doc(doc.id).collection('data').get()
 
         getHistoryDatas.forEach(doc => {
-            if (arrayHistory[index].id == doc.data().historyId)
+            if (arrayHistory[index].id == doc.data().historyId){
                 arrayHistoryData.push(doc.data())
-            else
+                tempSumMtbf += doc.data().duration
+            }
+            else{
                 arrayHistoryDataTemp.push(doc.data)
+            }
         })
 
+        mtbf = tempSumMtbf / arrayHistoryData.length
+        reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
         flows['history'][index].data = arrayHistoryData
+        flows['history'][index].mtbf = mtbf
+        flows['history'][index].reliability = reliability
     })
 
     flowReliabilitiesDb = flowsDb.collection('reliability')
@@ -149,9 +159,6 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
     responseFlowMtbf.forEach(doc => {
         arrayMtbf.push(doc.data())
     })
-
-    flows['reliability'] = arrayReliability
-    flows['mtbf'] = arrayMtbf
 
     res.send({
         flows
