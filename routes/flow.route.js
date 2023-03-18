@@ -118,11 +118,9 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
     })
 
     flows['history'] = arrayHistory
+    let arrayHistoryDuration = []
     
     arrayHistory.forEach( async (doc, index) => {
-        let tempSumMtbf = 0
-        let mtbf = 0
-        let reliability = 0
         let arrayHistoryData = []
         let arrayHistoryDataTemp = []
         let getHistoryDatas = await db.collection('flows').doc(id).collection('history').doc(doc.id).collection('data').get()
@@ -130,21 +128,17 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
         getHistoryDatas.forEach(doc => {
             if (arrayHistory[index].id == doc.data().historyId){
                 arrayHistoryData.push(doc.data())
-                tempSumMtbf += doc.data().duration
+                arrayHistoryDuration.push(doc.data().duration)
             }
             else{
                 arrayHistoryDataTemp.push(doc.data)
             }
         })
-
-        mtbf = tempSumMtbf / arrayHistoryData.length
-        reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
+        
         flows['history'][index].data = arrayHistoryData
-        flows['history'][index].mtbf = mtbf
-        flows['history'][index].reliability = reliability
     })
 
-    flowReliabilitiesDb = flowsDb.collection('reliability')
+    const flowReliabilitiesDb = flowsDb.collection('reliability')
     const responseFlowReliabilities = await flowReliabilitiesDb.get()
 
     let arrayReliability = []
@@ -152,13 +146,27 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
         arrayReliability.push(doc.data())
     })
     
-    flowMtbfDb = flowsDb.collection('mtbf')
+    const flowMtbfDb = flowsDb.collection('mtbf')
     const responseFlowMtbf = await flowMtbfDb.get()
 
     let arrayMtbf = []
     responseFlowMtbf.forEach(doc => {
         arrayMtbf.push(doc.data())
     })
+    
+    let mtbf = 0
+    let reliability = 0
+    let tempSumMtbf = 0
+
+    arrayHistoryDuration.forEach( data => {
+        tempSumMtbf += data
+    })
+
+    mtbf = tempSumMtbf / arrayHistoryDuration.length
+    reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
+
+    flows['mtbf'] = mtbf
+    flows['reliability'] = reliability
 
     res.send({
         flows

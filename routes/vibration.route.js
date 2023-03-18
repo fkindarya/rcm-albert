@@ -118,34 +118,27 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     })
 
     vibrations['history'] = arrayHistory
+    let arrayHistoryDuration = []
 
     arrayHistory.forEach( async (doc, index) => {
-        let tempSumMtbf = 0
-        let mtbf = 0
-        let reliability = 0
         let arrayHistoryData = []
         let arrayHistoryDataTemp = []
         let getHistoryDatas = await db.collection('vibrations').doc(id).collection('history').doc(doc.id).collection('data').get()
 
         getHistoryDatas.forEach(doc => {
-            console.log(doc.data())
             if (arrayHistory[index].id == doc.data().historyId){
                 arrayHistoryData.push(doc.data())
-                tempSumMtbf += doc.data().duration
+                arrayHistoryDuration.push(doc.data().duration)
             }
             else{
                 arrayHistoryDataTemp.push(doc.data)
             }
         })
 
-        mtbf = tempSumMtbf / arrayHistoryData.length
-        reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
         vibrations['history'][index].data = arrayHistoryData
-        vibrations['history'][index].mtbf = mtbf
-        vibrations['history'][index].reliability = reliability
     })
 
-    vibrationReliabilitiesDb = vibrationsDb.collection('reliability')
+    const vibrationReliabilitiesDb = vibrationsDb.collection('reliability')
     const responseVibrationReliabilities = await vibrationReliabilitiesDb.get()
 
     let arrayReliability = []
@@ -160,6 +153,20 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     responseVibrationMtbf.forEach(doc => {
         arrayMtbf.push(doc.data())
     })
+
+    let mtbf = 0
+    let reliability = 0
+    let tempSumMtbf = 0
+
+    arrayHistoryDuration.forEach( data => {
+        tempSumMtbf += data
+    })
+
+    mtbf = tempSumMtbf / arrayHistoryDuration.length
+    reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
+
+    vibrations['mtbf'] = mtbf
+    vibrations['reliability'] = reliability
 
     res.send({
         vibrations
