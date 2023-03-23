@@ -11,6 +11,12 @@ vibrationRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     const id = '_' + new Date().getTime()
     const json = {
         id: id,
+        HH: null,
+        H: null,
+        SP: null,
+        L: null,
+        LL: null,
+        value: null,
         // mtbf: data.mtbf,
         // reliability: data.reliability,
         // userId: verified.id
@@ -21,6 +27,36 @@ vibrationRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     res.status(201).json({
         message: "Vibration Sensor Created",
         data: id
+    })
+})
+
+vibrationRouter.patch('/:id/update-value', checkJWT, checkAdminRole, async (req, res) => {
+    const data = await req.body
+
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    await vibrationsDb.update({
+        value: data.value
+    })
+
+    res.status(201).json({
+        message: "Vibration Sensor Value Updated to " + data.value
+    })
+})
+
+vibrationRouter.patch('/:id/update-limit-value', checkJWT, checkAdminRole, async (req, res) => {
+    const data = await req.body
+
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    await vibrationsDb.update({
+        HH: data.HH,
+        H: data.H,
+        SP: data.SP,
+        L: data.L,
+        LL: data.LL,
+    })
+
+    res.status(201).json({
+        message: "Vibration Sensor Limit Value Updated"
     })
 })
 
@@ -71,12 +107,17 @@ vibrationRouter.post('/:id/add-mtbf', checkJWT, checkAdminRole, async (req, res)
 vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
 
-    const id = '_' + new Date().getTime()
+    const date = new Date()
+    const time = date.getTime()
+    const id = '_' + time
     const json = {
         id: id,
-        duration: data.duration,
-        time: data.time,
         status: data.status,
+        timeStart: time,
+        dateStart: date,
+        duration: null,
+        timeEnd: null,
+        dateEnd: null,
         historyId: req.params.idHistory
     }
 

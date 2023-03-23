@@ -11,6 +11,12 @@ flowRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     const id = '_' + new Date().getTime()
     const json = {
         id: id,
+        HH: null,
+        H: null,
+        SP: null,
+        L: null,
+        LL: null,
+        value: null,
         // mtbf: data.mtbf,
         // reliability: data.reliability,
         // userId: verified.id
@@ -21,6 +27,36 @@ flowRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     res.status(201).json({
         message: "Flow Sensor Created",
         data: id
+    })
+})
+
+flowRouter.patch('/:id/update-value', checkJWT, checkAdminRole, async (req, res) => {
+    const data = await req.body
+
+    const flowsDb = db.collection('flows').doc(req.params.id)
+    await flowsDb.update({
+        value: data.value
+    })
+
+    res.status(201).json({
+        message: "Flow Sensor Value Updated to " + data.value
+    })
+})
+
+flowRouter.patch('/:id/update-limit-value', checkJWT, checkAdminRole, async (req, res) => {
+    const data = await req.body
+
+    const flowsDb = db.collection('flows').doc(req.params.id)
+    await flowsDb.update({
+        HH: data.HH,
+        H: data.H,
+        SP: data.SP,
+        L: data.L,
+        LL: data.LL,
+    })
+
+    res.status(201).json({
+        message: "Flow Sensor Limit Value Updated"
     })
 })
 
@@ -71,12 +107,17 @@ flowRouter.post('/:id/add-mtbf', checkJWT, checkAdminRole, async (req, res) => {
 flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
 
-    const id = '_' + new Date().getTime()
+    const date = new Date()
+    const time = date.getTime()
+    const id = '_' + time
     const json = {
         id: id,
-        duration: data.duration,
-        time: data.time,
         status: data.status,
+        timeStart: time,
+        dateStart: date,
+        duration: null,
+        timeEnd: null,
+        dateEnd: null,
         historyId: req.params.idHistory
     }
 
