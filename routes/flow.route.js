@@ -4,6 +4,79 @@ const flowRouter = express.Router()
 const { checkJWT, checkAdminRole } = require('../middlewares/auth.middleware')
 const { db } = require('./firebase')
 
+const getLimitValue = async (id) => {
+    const flowsDb = db.collection('flows').doc(id)
+    const response = await flowsDb.get()
+    const limitValue = {
+        HH: response.data().HH,
+        H: response.data().H,
+        SP: response.data().SP,
+        L: response.data().L,
+        LL: response.data().LL
+    }
+    
+    return limitValue
+}
+
+const createHistoryData = async (idFlow, idHistory, status) => {
+    const date = new Date()
+    const time = date.getTime()
+    const id = '_' + time
+
+    const flowsDb = db.collection('flows').doc(idFlow).collection('history').doc(idHistory).collection('data')
+    const checkData = await flowsDb.get()
+
+    if (checkData.empty){
+        const json = {
+            id: id,
+            status: status,
+            timeStart: time,
+            dateStart: date,
+            duration: null,
+            timeEnd: null,
+            dateEnd: null,
+            historyId: idHistory
+        }
+
+        await flowsDb.doc(id).set(json)
+        const message = "Flow History Data Created"
+        return message
+    } else {
+        const historyDatas = await flowsDb.orderBy('dateStart').get()
+        let arrayData = []
+        historyDatas.forEach(doc => {
+            arrayData.push(doc.data())
+        })
+        
+        const lastData = arrayData[arrayData.length - 1]
+        let durationBetween = (time - lastData.timeStart) / 1000
+        durationBetween /= (60)
+        durationBetween = Math.abs(Math.round(durationBetween))
+        const updateJson = {
+            duration: durationBetween,
+            timeEnd: time,
+            dateEnd: date
+        }
+
+        await flowsDb.doc(lastData.id).update(updateJson)
+
+        const json = {
+            id: id,
+            status: status,
+            timeStart: time,
+            dateStart: date,
+            duration: null,
+            timeEnd: null,
+            dateEnd: null,
+            historyId: idHistory
+        }
+
+        await flowsDb.doc(id).set(json)
+        const message = "Flow History Data Created"
+        return message
+    }
+}
+
 flowRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     // const data = await req.body
     // const verified = await req.verified
@@ -40,6 +113,32 @@ flowRouter.patch('/:id/update-value', checkJWT, checkAdminRole, async (req, res)
 
     res.status(201).json({
         message: "Flow Sensor Value Updated to " + data.value
+    })
+})
+
+flowRouter.patch('/:id/:idHistory/update-flowValue', checkJWT, checkAdminRole, async (req, res) => {
+    const data = await req.body
+    let response
+
+    const flowsDb = db.collection('flows').doc(req.params.id)
+    await flowsDb.update({
+        value: data.value
+    })
+
+    const flowLimitValue = await getLimitValue(req.params.id)
+    if ((data.value >= flowLimitValue.H && data.value <= flowLimitValue.HH) || (data.value <= flowLimitValue.L && data.value >= flowLimitValue.LL)){
+        const status = "ERROR"
+        response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    } else if(data.value > flowLimitValue.HH || (data.value < flowLimitValue.LL)) {
+        const status = "FAILURE"
+        response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    } else {
+        response = "Normal Sensor Value"
+    }
+
+    res.status(201).json({
+        message: "Flow Sensor Value Updated to " + data.value,
+        response: response
     })
 })
 

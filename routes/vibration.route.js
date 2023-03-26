@@ -4,6 +4,79 @@ const vibrationRouter = express.Router()
 const { checkJWT, checkAdminRole } = require('../middlewares/auth.middleware')
 const { db } = require('./firebase')
 
+const getLimitValue = async (id) => {
+    const vibrationsDb = db.collection('vibrations').doc(id)
+    const response = await vibrationsDb.get()
+    const limitValue = {
+        HH: response.data().HH,
+        H: response.data().H,
+        SP: response.data().SP,
+        L: response.data().L,
+        LL: response.data().LL
+    }
+    
+    return limitValue
+}
+
+const createHistoryData = async (idVibration, idHistory, status) => {
+    const date = new Date()
+    const time = date.getTime()
+    const id = '_' + time
+
+    const vibrationsDb = db.collection('vibrations').doc(idVibration).collection('history').doc(idHistory).collection('data')
+    const checkData = await vibrationsDb.get()
+
+    if (checkData.empty){
+        const json = {
+            id: id,
+            status: status,
+            timeStart: time,
+            dateStart: date,
+            duration: null,
+            timeEnd: null,
+            dateEnd: null,
+            historyId: idHistory
+        }
+
+        await vibrationsDb.doc(id).set(json)
+        const message = "Vibration History Data Created"
+        return message
+    } else {
+        const historyDatas = await vibrationsDb.orderBy('dateStart').get()
+        let arrayData = []
+        historyDatas.forEach(doc => {
+            arrayData.push(doc.data())
+        })
+        
+        const lastData = arrayData[arrayData.length - 1]
+        let durationBetween = (time - lastData.timeStart) / 1000
+        durationBetween /= (60)
+        durationBetween = Math.abs(Math.round(durationBetween))
+        const updateJson = {
+            duration: durationBetween,
+            timeEnd: time,
+            dateEnd: date
+        }
+
+        await vibrationsDb.doc(lastData.id).update(updateJson)
+
+        const json = {
+            id: id,
+            status: status,
+            timeStart: time,
+            dateStart: date,
+            duration: null,
+            timeEnd: null,
+            dateEnd: null,
+            historyId: idHistory
+        }
+
+        await vibrationsDb.doc(id).set(json)
+        const message = "Vibration History Data Created"
+        return message
+    }
+}
+
 vibrationRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     // const data = await req.body
     // const verified = await req.verified
@@ -40,6 +113,32 @@ vibrationRouter.patch('/:id/update-value', checkJWT, checkAdminRole, async (req,
 
     res.status(201).json({
         message: "Vibration Sensor Value Updated to " + data.value
+    })
+})
+
+vibrationRouter.patch('/:id/:idHistory/update-vibrationValue', checkJWT, checkAdminRole, async (req, res) => {
+    const data = await req.body
+    let response
+
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    await vibrationsDb.update({
+        value: data.value
+    })
+
+    const vibrationLimitValue = await getLimitValue(req.params.id)
+    if ((data.value >= vibrationLimitValue.H && data.value <= vibrationLimitValue.HH) || (data.value <= vibrationLimitValue.L && data.value >= vibrationLimitValue.LL)){
+        const status = "ERROR"
+        response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    } else if(data.value > vibrationLimitValue.HH || (data.value < vibrationLimitValue.LL)) {
+        const status = "FAILURE"
+        response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    } else {
+        response = "Normal Sensor Value"
+    }
+
+    res.status(201).json({
+        message: "Vibration Sensor Value Updated to " + data.value,
+        response: response
     })
 })
 
