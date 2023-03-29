@@ -97,7 +97,7 @@ vibrationRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     })
 })
 
-vibrationRouter.patch('/:id/update-value', checkJWT, checkAdminRole, async (req, res) => {
+vibrationRouter.patch('/:id/update-value', async (req, res) => {
     const data = await req.body
 
     const vibrationsDb = db.collection('vibrations').doc(req.params.id)
@@ -110,7 +110,7 @@ vibrationRouter.patch('/:id/update-value', checkJWT, checkAdminRole, async (req,
     })
 })
 
-vibrationRouter.patch('/:id/:idHistory/update-vibrationValue', checkJWT, checkAdminRole, async (req, res) => {
+vibrationRouter.patch('/:id/:idHistory/update-vibrationValue', async (req, res) => {
     const data = await req.body
     let response
 

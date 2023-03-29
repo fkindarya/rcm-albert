@@ -97,7 +97,7 @@ flowRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     })
 })
 
-flowRouter.patch('/:id/update-value', checkJWT, checkAdminRole, async (req, res) => {
+flowRouter.patch('/:id/update-value', async (req, res) => {
     const data = await req.body
 
     const flowsDb = db.collection('flows').doc(req.params.id)
@@ -110,7 +110,7 @@ flowRouter.patch('/:id/update-value', checkJWT, checkAdminRole, async (req, res)
     })
 })
 
-flowRouter.patch('/:id/:idHistory/update-flowValue', checkJWT, checkAdminRole, async (req, res) => {
+flowRouter.patch('/:id/:idHistory/update-flowValue', async (req, res) => {
     const data = await req.body
     let response
 
