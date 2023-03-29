@@ -30,11 +30,9 @@ const createHistoryData = async (idVibration, idHistory, status) => {
         const json = {
             id: id,
             status: status,
-            timeStart: time,
-            dateStart: date,
-            duration: null,
+            timeStart: date,
             timeEnd: null,
-            dateEnd: null,
+            duration: null,
             historyId: idHistory
         }
 
@@ -42,20 +40,18 @@ const createHistoryData = async (idVibration, idHistory, status) => {
         const message = "Vibration History Data Created"
         return message
     } else {
-        const historyDatas = await vibrationsDb.orderBy('dateStart').get()
+        const historyDatas = await vibrationsDb.orderBy('timeStart').get()
         let arrayData = []
         historyDatas.forEach(doc => {
             arrayData.push(doc.data())
         })
         
         const lastData = arrayData[arrayData.length - 1]
-        let durationBetween = (time - lastData.timeStart) / 1000
-        durationBetween /= (60)
-        durationBetween = Math.abs(Math.round(durationBetween))
+        let durationBetween = Math.ceil((date.getTime() /1000) - lastData.timeStart._seconds)
+        durationBetween = Math.ceil(durationBetween / 60)
         const updateJson = {
             duration: durationBetween,
-            timeEnd: time,
-            dateEnd: date
+            timeEnd: date,
         }
 
         await vibrationsDb.doc(lastData.id).update(updateJson)
@@ -63,11 +59,9 @@ const createHistoryData = async (idVibration, idHistory, status) => {
         const json = {
             id: id,
             status: status,
-            timeStart: time,
-            dateStart: date,
-            duration: null,
+            timeStart: date,
             timeEnd: null,
-            dateEnd: null,
+            duration: null,
             historyId: idHistory
         }
 
@@ -133,7 +127,8 @@ vibrationRouter.patch('/:id/:idHistory/update-vibrationValue', checkJWT, checkAd
         const status = "FAILURE"
         response = await createHistoryData(req.params.id, req.params.idHistory, status)
     } else {
-        response = "Normal Sensor Value"
+        const status = "NORMAL"
+        response = await createHistoryData(req.params.id, req.params.idHistory, status)
     }
 
     res.status(201).json({
@@ -208,57 +203,19 @@ vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async
     const date = new Date()
     const time = date.getTime()
     const id = '_' + time
+    
+    const json = {
+        id: id,
+        status: data.status,
+        timeStart: data.timeStart,
+        duration: data.duration,
+        timeEnd: data.timeEnd,
+        historyId: req.params.idHistory
+    }
 
     const vibrationsDb = db.collection('vibrations').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data')
-    const checkData = await vibrationsDb.get()
-
-    if (checkData.empty){
-        const json = {
-            id: id,
-            status: data.status,
-            timeStart: time,
-            dateStart: date,
-            duration: null,
-            timeEnd: null,
-            dateEnd: null,
-            historyId: req.params.idHistory
-        }
-
-        await vibrationsDb.doc(id).set(json)
-        res.status(201).json({message: "Vibration History Data Created"})
-    } else {
-        const historyDatas = await vibrationsDb.orderBy('dateStart').get()
-        let arrayData = []
-        historyDatas.forEach(doc => {
-            arrayData.push(doc.data())
-        })
-        
-        const lastData = arrayData[arrayData.length - 1]
-        let durationBetween = (time - lastData.timeStart) / 1000
-        durationBetween /= (60)
-        durationBetween = Math.abs(Math.round(durationBetween))
-        const updateJson = {
-            duration: durationBetween,
-            timeEnd: time,
-            dateEnd: date
-        }
-
-        await vibrationsDb.doc(lastData.id).update(updateJson)
-
-        const json = {
-            id: id,
-            status: data.status,
-            timeStart: time,
-            dateStart: date,
-            duration: null,
-            timeEnd: null,
-            dateEnd: null,
-            historyId: req.params.idHistory
-        }
-
-        await vibrationsDb.doc(id).set(json)
-        res.status(201).json({message: "Vibration History Data Created"})
-    }
+    await vibrationsDb.doc(id).set(json)
+    res.status(201).json({message: "Vibration History Data Created"})
 })
 
 vibrationRouter.get('/all', checkJWT, async (req, res) => {
