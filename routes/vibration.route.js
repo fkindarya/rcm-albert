@@ -256,12 +256,19 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     arrayHistory.forEach( async (doc, index) => {
         let arrayHistoryData = []
         let arrayHistoryDataTemp = []
+        let arrayHistoryDurationTemp = []
         let getHistoryDatas = await db.collection('vibrations').doc(id).collection('history').doc(doc.id).collection('data').get()
 
         getHistoryDatas.forEach(doc => {
             if (arrayHistory[index].id == doc.data().historyId){
                 arrayHistoryData.push(doc.data())
-                arrayHistoryDuration.push(doc.data().duration)
+
+                if (doc.data().status == "FAILURE"){
+                    arrayHistoryDurationTemp.push(doc.data().duration)
+                } 
+                else {
+                    arrayHistoryDuration.push(doc.data().duration)
+                }
             }
             else{
                 arrayHistoryDataTemp.push(doc.data)
