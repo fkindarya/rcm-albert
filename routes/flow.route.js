@@ -84,6 +84,7 @@ flowRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
         L: null,
         LL: null,
         value: null,
+        flowName: null,
         // mtbf: data.mtbf,
         // reliability: data.reliability,
         // userId: verified.id
@@ -154,6 +155,19 @@ flowRouter.patch('/:id/update-limit-value', checkJWT, checkAdminRole, async (req
     })
 })
 
+flowRouter.patch('/:id/update-flow-name', checkJWT, async (req, res) => {
+    const data = await req.body
+
+    const flowsDb = db.collection('flows').doc(req.params.id)
+    await flowsDb.update({
+        flowName: data.flowName
+    })
+
+    res.status(201).json({
+        message: "Flow Sensor Name Updated"
+    })
+})
+
 flowRouter.post('/:id/add-history', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
     
@@ -204,11 +218,16 @@ flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req
     const time = date.getTime()
     const id = '_' + time
 
+    let dateTimeStart = new Date(data.timeStart)
+    let dateTimeEnd = new Date(data.timeEnd)
+    let durationBetween = Math.abs(dateTimeStart - dateTimeEnd) / 36e5
+
     const json = {
         id: id,
         status: data.status,
         timeStart: data.timeStart,
-        duration: data.duration,
+        // duration: data.duration,
+        duration: durationBetween,
         timeEnd: data.timeEnd,
         historyId: req.params.idHistory
     }
@@ -237,9 +256,11 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
     const id = req.params.id
     const flowsDb = db.collection('flows').doc(id)
     const responseFlow = await flowsDb.get()
+    let stage = 0
 
     let flows = {
-        id: responseFlow.data().id
+        id: responseFlow.data().id,
+        flowName: responseFlow.data().flowName
     }
     
     const flowHistoriesDb = flowsDb.collection('history')
@@ -265,6 +286,7 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
 
                 if (doc.data().status == "FAILURE"){
                     arrayHistoryDurationTemp.push(doc.data().duration)
+                    stage++
                 } 
                 else {
                     arrayHistoryDuration.push(doc.data().duration)
@@ -302,7 +324,8 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
         tempSumMtbf += data
     })
 
-    mtbf = tempSumMtbf / arrayHistoryDuration.length
+    // mtbf = tempSumMtbf / arrayHistoryDuration.length
+    mtbf = tempSumMtbf / stage
     reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
 
     flows['mtbf'] = mtbf

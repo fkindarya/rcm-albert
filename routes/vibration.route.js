@@ -84,6 +84,7 @@ vibrationRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
         L: null,
         LL: null,
         value: null,
+        vibrationName: null,
         // mtbf: data.mtbf,
         // reliability: data.reliability,
         // userId: verified.id
@@ -154,6 +155,19 @@ vibrationRouter.patch('/:id/update-limit-value', checkJWT, checkAdminRole, async
     })
 })
 
+vibrationRouter.patch('/:id/update-vibration-name', checkJWT, async (req, res) => {
+    const data = await req.body
+
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    await vibrationsDb.update({
+        vibrationName: data.vibrationName
+    })
+
+    res.status(201).json({
+        message: "Vibration Sensor Name Updated"
+    })
+})
+
 vibrationRouter.post('/:id/add-history', checkJWT, checkAdminRole, async (req, res) => {
     const data = await req.body
     
@@ -204,11 +218,16 @@ vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async
     const time = date.getTime()
     const id = '_' + time
     
+    let dateTimeStart = new Date(data.timeStart)
+    let dateTimeEnd = new Date(data.timeEnd)
+    let durationBetween = Math.abs(dateTimeStart - dateTimeEnd) / 36e5
+
     const json = {
         id: id,
         status: data.status,
         timeStart: data.timeStart,
-        duration: data.duration,
+        // duration: data.duration,
+        duration: durationBetween,
         timeEnd: data.timeEnd,
         historyId: req.params.idHistory
     }
@@ -237,9 +256,11 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     const id = req.params.id
     const vibrationsDb = db.collection('vibrations').doc(id)
     const responseVibration = await vibrationsDb.get()
+    let stage = 0
 
     let vibrations = {
-        id: responseVibration.data().id
+        id: responseVibration.data().id,
+        vibrationName: responseVibration.data().vibrationName
     }
     
     const vibrationHistoriesDb = vibrationsDb.collection('history')
@@ -265,6 +286,7 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
 
                 if (doc.data().status == "FAILURE"){
                     arrayHistoryDurationTemp.push(doc.data().duration)
+                    stage++
                 } 
                 else {
                     arrayHistoryDuration.push(doc.data().duration)
@@ -302,7 +324,8 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
         tempSumMtbf += data
     })
 
-    mtbf = tempSumMtbf / arrayHistoryDuration.length
+    // mtbf = tempSumMtbf / arrayHistoryDuration.length
+    mtbf = tempSumMtbf / stage
     reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
 
     vibrations['mtbf'] = mtbf
