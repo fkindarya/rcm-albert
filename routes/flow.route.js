@@ -257,6 +257,7 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
     const flowsDb = db.collection('flows').doc(id)
     const responseFlow = await flowsDb.get()
     let stage = 0
+    let failureLoc = 0
 
     let flows = {
         id: responseFlow.data().id,
@@ -286,6 +287,7 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
 
                 if (doc.data().status == "FAILURE"){
                     arrayHistoryDurationTemp.push(doc.data().duration)
+                    failureLoc = arrayHistoryDuration.length
                     stage++
                 } 
                 else {
@@ -320,9 +322,13 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
     let reliability = 0
     let tempSumMtbf = 0
 
-    arrayHistoryDuration.forEach( data => {
-        tempSumMtbf += data
-    })
+    // arrayHistoryDuration.forEach( data => {
+    //     tempSumMtbf += data
+    // })
+
+    for (let i = 0; i < failureLoc; i++) {
+        tempSumMtbf += arrayHistoryDuration[i]
+    }
 
     // mtbf = tempSumMtbf / arrayHistoryDuration.length
     mtbf = tempSumMtbf / stage

@@ -257,6 +257,7 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     const vibrationsDb = db.collection('vibrations').doc(id)
     const responseVibration = await vibrationsDb.get()
     let stage = 0
+    let failureLoc = 0
 
     let vibrations = {
         id: responseVibration.data().id,
@@ -286,6 +287,7 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
 
                 if (doc.data().status == "FAILURE"){
                     arrayHistoryDurationTemp.push(doc.data().duration)
+                    failureLoc = arrayHistoryDuration.length
                     stage++
                 } 
                 else {
@@ -320,9 +322,13 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     let reliability = 0
     let tempSumMtbf = 0
 
-    arrayHistoryDuration.forEach( data => {
-        tempSumMtbf += data
-    })
+    // arrayHistoryDuration.forEach( data => {
+    //     tempSumMtbf += data
+    // })
+
+    for (let i = 0; i < failureLoc; i++) {
+        tempSumMtbf += arrayHistoryDuration[i]
+    }
 
     // mtbf = tempSumMtbf / arrayHistoryDuration.length
     mtbf = tempSumMtbf / stage
