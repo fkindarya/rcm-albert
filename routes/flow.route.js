@@ -232,9 +232,41 @@ flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req
         historyId: req.params.idHistory
     }
 
-    const flowsDb = db.collection('flows').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data')
-    await flowsDb.doc(id).set(json)
-    res.status(201).json({message: "Flow History Data Created"})
+    if (data.status == "FAILURE") {
+        const flowsDb = db.collection('flows').doc(req.params.id)
+        const flowHistoriesDb = flowsDb.collection('history').doc(req.params.idHistory)
+        const flowHistoryDatasDb = flowHistoriesDb.collection('data')
+        const responseFlowHistoryData = await flowHistoryDatasDb.orderBy('timeEnd', 'desc').limit(1).get()
+
+        let lastHistoryData
+        responseFlowHistoryData.forEach(doc => {
+            lastHistoryData = doc.data()
+        })
+
+        if (lastHistoryData.status == "FAILURE"){
+            const lastHistoryDataDb = flowHistoryDatasDb.doc(lastHistoryData.id)
+            let dateTimeStartLast = new Date(lastHistoryData.timeStart)
+            let durationBetweenLast = Math.abs(dateTimeStartLast - dateTimeEnd) / 36e5
+
+            await lastHistoryDataDb.update({
+                timeEnd: data.timeEnd,
+                duration: durationBetweenLast
+            })
+
+            res.status(201).json({
+                message: "Flow Last History Data Updated"
+            })
+        } else {
+            const flowsDb = db.collection('flows').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data')
+            await flowsDb.doc(id).set(json)
+            res.status(201).json({message: "Flow History Data Created"})
+        }
+
+    } else {
+        const flowsDb = db.collection('flows').doc(req.params.id).collection('history').doc(req.params.idHistory).collection('data')
+        await flowsDb.doc(id).set(json)
+        res.status(201).json({message: "Flow History Data Created"})
+    }
 })
 
 flowRouter.get('/all', checkJWT, async (req, res) => {
