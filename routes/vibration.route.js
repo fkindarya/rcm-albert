@@ -85,6 +85,8 @@ const createHistoryValue = async (idVibration, value) => {
     }
 
     await vibrationsDb.doc(id).set(json)
+    const message = "Vibration Value Data Inserted"
+    return message
 }
 
 vibrationRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
@@ -127,7 +129,7 @@ vibrationRouter.patch('/:id/update-value', async (req, res) => {
     })
 })
 
-vibrationRouter.patch('/:id/:idHistory/update-vibrationValue', async (req, res) => {
+vibrationRouter.patch('/:id/update-vibrationValue', async (req, res) => {
     const data = await req.body
     let response
 
@@ -136,19 +138,19 @@ vibrationRouter.patch('/:id/:idHistory/update-vibrationValue', async (req, res) 
         value: data.value
     })
 
-    const vibrationLimitValue = await getLimitValue(req.params.id)
-    if ((data.value >= vibrationLimitValue.H && data.value <= vibrationLimitValue.HH) || (data.value <= vibrationLimitValue.L && data.value >= vibrationLimitValue.LL)){
-        const status = "ERROR"
-        response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    } else if(data.value > vibrationLimitValue.HH || (data.value < vibrationLimitValue.LL)) {
-        const status = "FAILURE"
-        response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    } else {
-        const status = "NORMAL"
-        response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    }
+    // const vibrationLimitValue = await getLimitValue(req.params.id)
+    // if ((data.value >= vibrationLimitValue.H && data.value <= vibrationLimitValue.HH) || (data.value <= vibrationLimitValue.L && data.value >= vibrationLimitValue.LL)){
+    //     const status = "ERROR"
+    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    // } else if(data.value > vibrationLimitValue.HH || (data.value < vibrationLimitValue.LL)) {
+    //     const status = "FAILURE"
+    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    // } else {
+    //     const status = "NORMAL"
+    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    // }
 
-    createHistoryValue(req.params.id, data.value)
+    response = createHistoryValue(req.params.id, data.value)
 
     res.status(201).json({
         message: "Vibration Sensor Value Updated to " + data.value,

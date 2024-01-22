@@ -85,6 +85,8 @@ const createHistoryValue = async (idFlow, value) => {
     }
 
     await flowsDb.doc(id).set(json)
+    const message = "Flow Value Data Inserted"
+    return message
 }
 
 flowRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
@@ -127,7 +129,7 @@ flowRouter.patch('/:id/update-value', async (req, res) => {
     })
 })
 
-flowRouter.patch('/:id/:idHistory/update-flowValue', async (req, res) => {
+flowRouter.patch('/:id/update-flowValue', async (req, res) => {
     const data = await req.body
     let response
 
@@ -136,19 +138,19 @@ flowRouter.patch('/:id/:idHistory/update-flowValue', async (req, res) => {
         value: data.value
     })
 
-    const flowLimitValue = await getLimitValue(req.params.id)
-    if ((data.value >= flowLimitValue.H && data.value <= flowLimitValue.HH) || (data.value <= flowLimitValue.L && data.value >= flowLimitValue.LL)){
-        const status = "ERROR"
-        response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    } else if(data.value > flowLimitValue.HH || (data.value < flowLimitValue.LL)) {
-        const status = "FAILURE"
-        response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    } else {
-        const status = "NORMAL"
-        response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    }
+    // const flowLimitValue = await getLimitValue(req.params.id)
+    // if ((data.value >= flowLimitValue.H && data.value <= flowLimitValue.HH) || (data.value <= flowLimitValue.L && data.value >= flowLimitValue.LL)){
+    //     const status = "ERROR"
+    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    // } else if(data.value > flowLimitValue.HH || (data.value < flowLimitValue.LL)) {
+    //     const status = "FAILURE"
+    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    // } else {
+    //     const status = "NORMAL"
+    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
+    // }
 
-    createHistoryValue(req.params.id, data.value)
+    response = createHistoryValue(req.params.id, data.value)
 
     res.status(201).json({
         message: "Flow Sensor Value Updated to " + data.value,
