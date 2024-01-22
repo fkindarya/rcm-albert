@@ -150,7 +150,7 @@ vibrationRouter.patch('/:id/update-vibrationValue', async (req, res) => {
     //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
     // }
 
-    response = createHistoryValue(req.params.id, data.value)
+    response = await createHistoryValue(req.params.id, data.value)
 
     res.status(201).json({
         message: "Vibration Sensor Value Updated to " + data.value,
