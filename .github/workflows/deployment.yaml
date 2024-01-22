@@ -1,0 +1,23 @@
+name: Deploy to VPS
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+    - name: executing remote ssh commands using password
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: ${{ secrets.PORT }}
+        script: |
+           cd /home/fabyan/rcm-albert
+           git reset --hard origin/main
+           git pull
+           /home/fabyan/.nvm/versions/node/v18.19.0/bin/npm install
+           /home/fabyan/.nvm/versions/node/v18.19.0/bin/pm2 restart --update-env rcm-albert
