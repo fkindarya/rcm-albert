@@ -71,6 +71,22 @@ const createHistoryData = async (idFlow, idHistory, status) => {
     }
 }
 
+const createHistoryValue = async (idFlow, value) => {
+    const date = new Date()
+    const time = date.getTime()
+    const id = '_' + time
+
+    const flowsDb = db.collection('flows').doc(idFlow).collection('values')
+
+    const json = {
+        id: id,
+        value: value,
+        createdAt: date
+    }
+
+    await flowsDb.doc(id).set(json)
+}
+
 flowRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     // const data = await req.body
     // const verified = await req.verified
@@ -132,9 +148,11 @@ flowRouter.patch('/:id/:idHistory/update-flowValue', async (req, res) => {
         response = await createHistoryData(req.params.id, req.params.idHistory, status)
     }
 
+    createHistoryValue(req.params.id, data.value)
+
     res.status(201).json({
         message: "Flow Sensor Value Updated to " + data.value,
-        response: response
+        response: response,
     })
 })
 
@@ -372,6 +390,18 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
     res.send({
         flows
     })
+})
+
+flowRouter.get('/:id/values', async (req, res) => {
+    const flowsDb = db.collection('flows').doc(req.params.id).collection("values")
+    const responseFlowValues = await flowsDb.orderBy('createdAt', 'desc').limit(20).get()
+
+    let arrayValue = []
+    responseFlowValues.forEach(doc => {
+        arrayValue.push(doc.data())
+    })
+
+    res.send(arrayValue)
 })
 
 flowRouter.get('/:id/:idHistory', checkJWT, async (req, res) => {

@@ -71,6 +71,22 @@ const createHistoryData = async (idVibration, idHistory, status) => {
     }
 }
 
+const createHistoryValue = async (idVibration, value) => {
+    const date = new Date()
+    const time = date.getTime()
+    const id = '_' + time
+
+    const vibrationsDb = db.collection('vibrations').doc(idVibration).collection('values')
+
+    const json = {
+        id: id,
+        value: value,
+        createdAt: date
+    }
+
+    await vibrationsDb.doc(id).set(json)
+}
+
 vibrationRouter.post('/add-data', checkJWT, checkAdminRole, async(req, res) => {
     // const data = await req.body
     // const verified = await req.verified
@@ -132,9 +148,11 @@ vibrationRouter.patch('/:id/:idHistory/update-vibrationValue', async (req, res) 
         response = await createHistoryData(req.params.id, req.params.idHistory, status)
     }
 
+    createHistoryValue(req.params.id, data.value)
+
     res.status(201).json({
         message: "Vibration Sensor Value Updated to " + data.value,
-        response: response
+        response: response,
     })
 })
 
@@ -372,6 +390,18 @@ vibrationRouter.get('/:id', checkJWT, async (req, res) => {
     res.send({
         vibrations
     })
+})
+
+vibrationRouter.get('/:id/values', async (req, res) => {
+    const vibrationsDb = db.collection('vibrations').doc(req.params.id).collection("values")
+    const responseVibrationValues = await vibrationsDb.orderBy('createdAt', 'desc').limit(20).get()
+
+    let arrayValue = []
+    responseVibrationValues.forEach(doc => {
+        arrayValue.push(doc.data())
+    })
+
+    res.send(arrayValue)
 })
 
 vibrationRouter.get('/:id/:idHistory', checkJWT, async (req, res) => {
