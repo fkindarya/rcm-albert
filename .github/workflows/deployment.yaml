@@ -19,4 +19,5 @@ jobs:
            cd /home/fabyan/rcm-albert
            git reset --hard origin/main
            git pull
+           /home/fabyan/.nvm/versions/node/v18.19.0/bin/npm install
            /home/fabyan/.nvm/versions/node/v18.19.0/bin/pm2 restart --update-env rcm-albert
