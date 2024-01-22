@@ -1,27 +1,22 @@
-name: NodeJS with Grunt
-
+name: Deploy to VPS
 on:
   push:
-    branches: [ "deployment-test" ]
-  pull_request:
-    branches: [ "deployment-test" ]
-
+    branches:
+      - main
 jobs:
-  build:
+  deploy:
+    name: deploy
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [14.x, 16.x, 18.x]
-
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
+    - name: executing remote ssh commands using password
+      uses: appleboy/ssh-action@v1.0.3
       with:
-        node-version: ${{ matrix.node-version }}
-
-    - name: Build
-      run: |
-        npm install
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: ${{ secrets.PORT }}
+        script: |
+           cd /home/fabyan/rcm-albert
+           git reset --hard origin/main
+           git pull
+           pm2 restart --update-env rcm-albert
