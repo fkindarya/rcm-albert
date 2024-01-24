@@ -48,7 +48,8 @@ const createHistoryData = async (idVibration, idHistory, status) => {
         
         const lastData = arrayData[arrayData.length - 1]
         let durationBetween = Math.ceil((date.getTime() /1000) - lastData.timeStart._seconds)
-        durationBetween = Math.ceil(durationBetween / 60)
+        // durationBetween = Math.ceil(durationBetween / 60)
+        durationBetween = Math.ceil(durationBetween)
         const updateJson = {
             duration: durationBetween,
             timeEnd: date,
@@ -240,7 +241,8 @@ vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async
     
     let dateTimeStart = new Date(data.timeStart)
     let dateTimeEnd = new Date(data.timeEnd)
-    let durationBetween = Math.abs(dateTimeStart - dateTimeEnd) / 36e5
+    // let durationBetween = Math.abs(dateTimeStart - dateTimeEnd) / 36e5
+    let durationBetween = Math.abs(((dateTimeStart.getTime()/1000) - (dateTimeEnd.getTime()/1000))/60)
 
     const json = {
         id: id,
@@ -266,7 +268,8 @@ vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async
         if (lastHistoryData.status == "FAILURE") {
             const lastHistoryDataDb = vibrationHistoryDatasDb.doc(lastHistoryData.id)
             let dateTimeStartLast = new Date(lastHistoryData.timeStart)
-            let durationBetweenLast = Math.abs(dateTimeStartLast - dateTimeEnd) / 36e5
+            // let durationBetweenLast = Math.abs(dateTimeStartLast - dateTimeEnd) / 36e5
+            let durationBetweenLast = Math.abs(((dateTimeStartLast.getTime()/1000) - (dateTimeEnd.getTime()/1000))/60)
 
             await lastHistoryDataDb.update({
                 timeEnd: dateTimeEnd,
