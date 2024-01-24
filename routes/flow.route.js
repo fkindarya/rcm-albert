@@ -387,7 +387,8 @@ flowRouter.get('/:id', checkJWT, async (req, res) => {
 
     // mtbf = tempSumMtbf / arrayHistoryDuration.length
     mtbf = tempSumMtbf / stage
-    reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
+    // reliability = 1 / (Math.pow(2.72, (12 / mtbf))).toFixed(1)
+    reliability = 1 / (Math.pow(2.72, (60 / mtbf))).toFixed(1)
 
     flows['mtbf'] = mtbf
     flows['reliability'] = reliability
