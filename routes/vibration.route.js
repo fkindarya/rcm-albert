@@ -129,32 +129,32 @@ vibrationRouter.patch('/:id/update-value', async (req, res) => {
     })
 })
 
-vibrationRouter.patch('/:id/update-vibrationValue', async (req, res) => {
+vibrationRouter.patch('/:id/:idHistory/update-vibrationValue', async (req, res) => {
     const data = await req.body
-    let response
+    const id = req.params.id
+    const idHistory = req.params.idHistory
 
-    const vibrationsDb = db.collection('vibrations').doc(req.params.id)
+    const vibrationsDb = db.collection('vibrations').doc(id)
     await vibrationsDb.update({
         value: data.value
     })
 
-    // const vibrationLimitValue = await getLimitValue(req.params.id)
-    // if ((data.value >= vibrationLimitValue.H && data.value <= vibrationLimitValue.HH) || (data.value <= vibrationLimitValue.L && data.value >= vibrationLimitValue.LL)){
-    //     const status = "ERROR"
-    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    // } else if(data.value > vibrationLimitValue.HH || (data.value < vibrationLimitValue.LL)) {
-    //     const status = "FAILURE"
-    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    // } else {
-    //     const status = "NORMAL"
-    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    // }
+    const vibrationLimitValue = await getLimitValue(id)
+    if ((data.value >= vibrationLimitValue.H && data.value <= vibrationLimitValue.HH) || (data.value <= vibrationLimitValue.L && data.value >= vibrationLimitValue.LL)){
+        const status = "ERROR"
+        await createHistoryData(id, idHistory, status)
+    } else if(data.value > vibrationLimitValue.HH || (data.value < vibrationLimitValue.LL)) {
+        const status = "FAILURE"
+        await createHistoryData(id, idHistory, status)
+    } else {
+        const status = "NORMAL"
+        await createHistoryData(id, idHistory, status)
+    }
 
-    response = await createHistoryValue(req.params.id, data.value)
+    await createHistoryValue(id, data.value)
 
     res.status(201).json({
-        message: "Vibration Sensor Value Updated to " + data.value,
-        response: response,
+        message: "Vibration Sensor Value Updated to " + data.value
     })
 })
 
@@ -245,10 +245,10 @@ vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async
     const json = {
         id: id,
         status: data.status,
-        timeStart: data.timeStart,
+        timeStart: dateTimeStart,
         // duration: data.duration,
         duration: durationBetween,
-        timeEnd: data.timeEnd,
+        timeEnd: dateTimeEnd,
         historyId: req.params.idHistory
     }
 
@@ -269,7 +269,7 @@ vibrationRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async
             let durationBetweenLast = Math.abs(dateTimeStartLast - dateTimeEnd) / 36e5
 
             await lastHistoryDataDb.update({
-                timeEnd: data.timeEnd,
+                timeEnd: dateTimeEnd,
                 duration: durationBetweenLast
             })
 

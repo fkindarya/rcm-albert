@@ -129,32 +129,32 @@ flowRouter.patch('/:id/update-value', async (req, res) => {
     })
 })
 
-flowRouter.patch('/:id/update-flowValue', async (req, res) => {
+flowRouter.patch('/:id/:idHistory/update-flowValue', async (req, res) => {
     const data = await req.body
-    let response
+    const id = req.params.id
+    const idHistory = req.params.idHistory
 
-    const flowsDb = db.collection('flows').doc(req.params.id)
+    const flowsDb = db.collection('flows').doc(id)
     await flowsDb.update({
         value: data.value
     })
 
-    // const flowLimitValue = await getLimitValue(req.params.id)
-    // if ((data.value >= flowLimitValue.H && data.value <= flowLimitValue.HH) || (data.value <= flowLimitValue.L && data.value >= flowLimitValue.LL)){
-    //     const status = "ERROR"
-    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    // } else if(data.value > flowLimitValue.HH || (data.value < flowLimitValue.LL)) {
-    //     const status = "FAILURE"
-    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    // } else {
-    //     const status = "NORMAL"
-    //     response = await createHistoryData(req.params.id, req.params.idHistory, status)
-    // }
+    const flowLimitValue = await getLimitValue(id)
+    if ((data.value >= flowLimitValue.H && data.value <= flowLimitValue.HH) || (data.value <= flowLimitValue.L && data.value >= flowLimitValue.LL)){
+        const status = "ERROR"
+        await createHistoryData(id, idHistory, status)
+    } else if(data.value > flowLimitValue.HH || (data.value < flowLimitValue.LL)) {
+        const status = "FAILURE"
+        await createHistoryData(id, idHistory, status)
+    } else {
+        const status = "NORMAL"
+        await createHistoryData(id, idHistory, status)
+    }
 
-    response = await createHistoryValue(req.params.id, data.value)
+    await createHistoryValue(id, data.value)
 
     res.status(201).json({
-        message: "Flow Sensor Value Updated to " + data.value,
-        response: response,
+        message: "Flow Sensor Value Updated to " + data.value
     })
 })
 
@@ -245,10 +245,10 @@ flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req
     const json = {
         id: id,
         status: data.status,
-        timeStart: data.timeStart,
+        timeStart: dateTimeStart,
         // duration: data.duration,
         duration: durationBetween,
-        timeEnd: data.timeEnd,
+        timeEnd: dateTimeEnd,
         historyId: req.params.idHistory
     }
 
@@ -269,7 +269,7 @@ flowRouter.post('/:id/:idHistory/add-data', checkJWT, checkAdminRole, async (req
             let durationBetweenLast = Math.abs(dateTimeStartLast - dateTimeEnd) / 36e5
 
             await lastHistoryDataDb.update({
-                timeEnd: data.timeEnd,
+                timeEnd: dateTimeEnd,
                 duration: durationBetweenLast
             })
 
